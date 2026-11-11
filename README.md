@@ -7,7 +7,8 @@ Live: https://thekidinside.github.io/hero-pad/
 ## On the iPad
 1. Open the link in Safari, then tap **Share > Add to Home Screen**. It now opens full screen like an app.
 2. Optional: **Settings > Accessibility > Guided Access** keeps the child inside the app (triple-click the side button to start).
-3. To go home during a mission, **hold** the house button for about a second.
+3. Pick **Pencil** or **Finger** on the home screen. In Pencil mode, a finger is ignored for 4 seconds after the Pencil was used, so a resting palm doesn't draw. In Finger mode, a finger always draws.
+4. To go home during a mission, **hold** the house button for about a second.
 
 ## Develop
 ```

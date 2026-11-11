@@ -18,6 +18,7 @@ export class Ink {
     this.strokes = [];      // [{ pts: [[x, y, width, colour], ...] }]
     this.active = null;     // { id, type, stroke }
     this.penAt = -Infinity;
+    this.fingers = false;   // finger mode: touches always draw, even right after the Pencil
 
     canvas.addEventListener('pointerdown', e => this.down(e));
     canvas.addEventListener('pointermove', e => this.move(e));
@@ -38,7 +39,8 @@ export class Ink {
     } else {
       if (this.active) return;
       const palmSized = Math.max(e.width || 0, e.height || 0) > PALM_PX;
-      if (e.pointerType === 'touch' && (now - this.penAt < PEN_HOLD_MS || palmSized)) return;
+      const penInHand = !this.fingers && now - this.penAt < PEN_HOLD_MS;
+      if (e.pointerType === 'touch' && (penInHand || palmSized)) return;
     }
     try { this.c.setPointerCapture(e.pointerId); } catch { /* synthetic or already gone */ }
     this.active = { id: e.pointerId, type: e.pointerType, stroke: { pts: [] } };

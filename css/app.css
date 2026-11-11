@@ -60,6 +60,19 @@ h1 { font-size: clamp(44px, 8vw, 84px); margin: 0; letter-spacing: 1px; color: v
 .hero-card svg { width: 150px; height: 150px; }
 .hero-card.picked { border-color: var(--suit); transform: scale(1.06); }
 
+#input-pick {
+  display: flex; gap: 6px; padding: 6px;
+  background: #fff; border-radius: 999px;
+  box-shadow: 0 4px 0 #0001, 0 6px 16px #0001;
+}
+#input-pick button {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 26px 10px 18px; border-radius: 999px;
+  background: transparent; font-size: 26px; font-weight: 800;
+}
+#input-pick svg { width: 36px; height: 36px; }
+#input-pick button.picked { background: var(--suit); color: #fff; }
+
 .big {
   font-size: 40px; font-weight: 900; color: #fff;
   background: var(--suit);

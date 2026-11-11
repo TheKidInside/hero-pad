@@ -43,6 +43,13 @@ function renderHome() {
       <span>${h.name}</span>
     </button>`).join('');
   $('#go').style.setProperty('--suit', hero().suit);
+  $('#input-pick').style.setProperty('--suit', hero().suit);
+  for (const b of document.querySelectorAll('[data-input]')) {
+    const on = b.dataset.input === data.input;
+    b.classList.toggle('picked', on);
+    b.setAttribute('aria-checked', String(on));
+  }
+  ink.fingers = data.input === 'finger';
 }
 
 $('#heroes').addEventListener('click', e => {
@@ -53,6 +60,16 @@ $('#heroes').addEventListener('click', e => {
   save(data);
   renderHome();
   sfx.say(`${hero().name}, the ${hero().power}!`);
+});
+
+$('#input-pick').addEventListener('click', e => {
+  const b = e.target.closest('[data-input]');
+  if (!b) return;
+  sfx.unlock();
+  data.input = b.dataset.input;
+  save(data);
+  renderHome();
+  sfx.say(data.input === 'finger' ? 'Finger power!' : 'Pencil power!');
 });
 
 $('#go').addEventListener('click', () => {

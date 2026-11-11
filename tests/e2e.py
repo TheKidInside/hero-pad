@@ -193,6 +193,26 @@ with sync_playwright() as p:
     s = state(page)
     check(s["screen"] == "play" and s["at"] == 0 and s["kind"] == "maze", "exiting during the pause: the new mission still starts at its maze")
 
+    # finger mode: a finger draws straight after the Pencil, no palm wait
+    page.evaluate("""() => document.querySelector('#exit').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 61, bubbles: true, cancelable: true }))""")
+    page.wait_for_function("window.__heroPad.state().screen === 'home'", timeout=3000)
+    page.click('[data-input="finger"]')
+    check(state(page)["data"]["input"] == "finger", "finger mode is picked and saved")
+    check(page.locator('[data-input="finger"]').get_attribute("aria-checked") == "true", "finger button shows as picked")
+    shot(page, "6-home-finger")
+    page.click("#go")
+    page.wait_for_function("window.__heroPad.state().screen === 'play'")
+    sol = solve_maze(page)
+    page.evaluate(STROKE_JS, [[sol[0], sol[0]], "pen", 70])        # Pencil just used
+    page.evaluate(STROKE_JS, [sol, "touch", 71])                  # finger right away
+    check(state(page)["busy"], "finger mode: a finger right after the Pencil still solves the maze")
+    page.reload()
+    page.wait_for_selector(".hero-card")
+    check(page.locator('[data-input="finger"]').get_attribute("aria-checked") == "true", "finger mode survives a reload")
+    page.click('[data-input="pencil"]')
+    page.click("#go")
+    page.wait_for_function("window.__heroPad.state().screen === 'play'")
+
     # portrait sanity
     page.set_viewport_size({"width": 834, "height": 1194})
     page.wait_for_timeout(300)

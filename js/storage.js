@@ -3,7 +3,7 @@
 
 const KEY = 'heropad.v1';
 
-const defaults = () => ({ hero: 'zip', tol: 'wide', sound: true, items: {}, missions: 0 });
+const defaults = () => ({ hero: 'zip', input: 'pencil', tol: 'wide', sound: true, items: {}, missions: 0 });
 
 export function load() {
   try {

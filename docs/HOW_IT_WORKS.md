@@ -83,6 +83,7 @@ This gives the behaviour a 3-year-old needs:
 - **Pen wins:** if the Pencil touches down while a finger or palm stroke is running, that stroke is erased and the rules are rewound to a snapshot taken when it began (`begin` -> `cancel`).
 - **Pencil mode:** for 4 s after the Pencil was last used (`PEN_HOLD_MS`), finger touches are ignored. A palm resting between strokes doesn't draw.
 - Touches reported wider than 60 px count as a palm.
+- **Finger mode** (the Pencil / Finger switch on the home screen, saved as `data.input`) sets `ink.fingers = true`. That turns off the 4 s Pencil-mode wait, so a finger always draws. The Pencil still works, and the palm-size check stays on.
 
 ### 2.5 Locking the iPad page down
 
