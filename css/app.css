@@ -1,0 +1,142 @@
+:root {
+  --ink: #26213d;
+  --suit: #7b3fe4;
+  --gold: #ffd23f;
+  --font: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+/* Phone/iPad lock: no zoom, no sideways drag, no bounce, no selection or callouts. */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow-x: clip;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overflow: clip;
+  background: #eef0ff;
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.screen[hidden] { display: none; }
+
+/* ---------- home ---------- */
+
+#home { justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 30%, #fff 0, #e9e4ff 60%, #d9e8ff 100%); }
+h1 { font-size: clamp(44px, 8vw, 84px); margin: 0; letter-spacing: 1px; color: var(--ink); }
+.sub { font-size: 26px; margin: 0; opacity: .7; }
+
+#heroes { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; padding: 0 16px; }
+.hero-card {
+  width: 190px; padding: 14px 10px 12px;
+  background: #fff; border-radius: 28px;
+  box-shadow: 0 6px 0 #0001, 0 10px 24px #0002;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 28px; font-weight: 800;
+  border: 6px solid transparent;
+  transition: transform .15s;
+}
+.hero-card svg { width: 150px; height: 150px; }
+.hero-card.picked { border-color: var(--suit); transform: scale(1.06); }
+
+.big {
+  font-size: 40px; font-weight: 900; color: #fff;
+  background: var(--suit);
+  padding: 18px 64px; border-radius: 999px;
+  box-shadow: 0 8px 0 #0003;
+}
+.big:active { transform: translateY(4px); box-shadow: 0 4px 0 #0003; }
+.big.quiet { background: #fff; color: var(--ink); }
+
+/* ---------- play ---------- */
+
+#play { background: var(--bg, #eef); transition: background .4s; }
+
+.bar {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+}
+#prompt { flex: 1; font-size: clamp(22px, 3.2vw, 34px); font-weight: 800; text-align: center; }
+.round {
+  width: 58px; height: 58px; flex: none;
+  border-radius: 50%; background: #fff; color: var(--ink);
+  box-shadow: 0 4px 0 #0002;
+  display: grid; place-items: center;
+}
+.round svg { width: 40px; height: 40px; overflow: visible; }
+.ring { fill: none; stroke: var(--suit); stroke-width: 4; stroke-dasharray: 113.1; stroke-dashoffset: 113.1; transform: rotate(-90deg); transform-origin: 20px 20px; }
+#exit { touch-action: none; }   /* a wobbly finger must not turn the hold into a pan */
+#exit.holding .ring { transition: stroke-dashoffset .9s linear; stroke-dashoffset: 0; }
+
+#stars { display: flex; gap: 6px; }
+#stars i, #done-stars i {
+  width: 34px; height: 34px; display: block;
+  background: #0002;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+#stars i.on, #done-stars i.on { background: var(--gold); animation: pop .5s; }
+
+#area { position: relative; flex: 1; width: 100%; min-height: 0; }
+#stage { position: absolute; overflow: visible; pointer-events: none; }
+#ink {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  touch-action: none;
+}
+
+/* stage art */
+.road { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.road-now { stroke: #fff; filter: drop-shadow(0 4px 0 #0001); }
+.road-later { stroke: #fff; opacity: .45; }
+.road-done { stroke: var(--suit); opacity: .35; }
+.lane { fill: none; stroke: #c9cbe0; stroke-width: 6; stroke-dasharray: 2 22; stroke-linecap: round; }
+.fill { fill: none; stroke: var(--suit); opacity: .45; stroke-linecap: round; stroke-linejoin: round; }
+.arrow { fill: none; stroke: #9aa0bf; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.start circle { fill: #2ec45a; stroke: #fff; stroke-width: 8; }
+.start text { fill: #fff; font: 900 38px var(--font); text-anchor: middle; }
+.maze-floor { fill: #fff; opacity: .9; }
+.walls { fill: none; stroke: #3d3566; stroke-linecap: round; }
+.trail { fill: none; stroke: var(--suit); opacity: .3; stroke-linecap: round; stroke-linejoin: round; }
+
+#hero { transform-box: view-box; transform-origin: 0 0; transition: transform .12s ease-out; }
+#hero .bob { transform-box: view-box; transform-origin: 0 46px; animation: bob 1.8s ease-in-out infinite; }
+#hero .bob.wobble { animation: wobble .45s; }
+#hero .bob.cheer { animation: cheer .8s ease-out 2; }
+
+@keyframes bob { 50% { transform: translateY(-3px); } }
+@keyframes wobble { 20% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } 80% { transform: rotate(-5deg); } }
+@keyframes cheer { 30% { transform: translateY(-40px) scale(1.1); } 60% { transform: translateY(0) scale(1.05, .92); } }
+@keyframes twinkle { 50% { transform: scale(1.12); } }
+@keyframes pop { 0% { transform: scale(.2); } 70% { transform: scale(1.3); } }
+/* the goal group carries a transform attribute, so animate the star inside it */
+.goal polygon { transform-box: fill-box; transform-origin: center; animation: twinkle 1.6s ease-in-out infinite; }
+
+/* ---------- done ---------- */
+
+#done { justify-content: center; gap: 16px; background: radial-gradient(circle at 50% 40%, #fff8d6 0, #ffe9a8 50%, #ffd27a 100%); }
+#done-svg { width: min(48vh, 70vw); height: min(48vh, 70vw); overflow: visible; }
+#done-hero { animation: cheer 1s ease-out infinite; transform-box: view-box; transform-origin: 0 46px; }
+#done-stars { display: flex; gap: 10px; }
+#done-stars i { width: 54px; height: 54px; }
+.row { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
