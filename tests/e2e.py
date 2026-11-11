@@ -30,7 +30,8 @@ STROKE_JS = """
   const c = document.querySelector('#ink');
   const ev = (name, [x, y]) => c.dispatchEvent(new PointerEvent(name, {
     pointerId: id, pointerType: type, clientX: x, clientY: y, pressure: type === 'pen' ? 0.6 : 0.5,
-    width: type === 'pen' ? 1 : 20, height: type === 'pen' ? 1 : 20, isPrimary: true, bubbles: true, cancelable: true }));
+    width: type === 'pen' ? 1 : (globalThis.__touchSize || 20), height: type === 'pen' ? 1 : (globalThis.__touchSize || 20),
+    isPrimary: true, bubbles: true, cancelable: true }));
   ev('pointerdown', pts[0]);
   for (const p of pts.slice(1)) ev('pointermove', p);
   ev('pointerup', pts[pts.length - 1]);
@@ -204,8 +205,10 @@ with sync_playwright() as p:
     page.wait_for_function("window.__heroPad.state().screen === 'play'")
     sol = solve_maze(page)
     page.evaluate(STROKE_JS, [[sol[0], sol[0]], "pen", 70])        # Pencil just used
+    page.evaluate("globalThis.__touchSize = 90")                  # iPadOS reports fingertips this wide
     page.evaluate(STROKE_JS, [sol, "touch", 71])                  # finger right away
-    check(state(page)["busy"], "finger mode: a finger right after the Pencil still solves the maze")
+    page.evaluate("globalThis.__touchSize = 0")
+    check(state(page)["busy"], "finger mode: a wide fingertip right after the Pencil still solves the maze")
     page.reload()
     page.wait_for_selector(".hero-card")
     check(page.locator('[data-input="finger"]').get_attribute("aria-checked") == "true", "finger mode survives a reload")

@@ -73,6 +73,8 @@ h1 { font-size: clamp(44px, 8vw, 84px); margin: 0; letter-spacing: 1px; color: v
 #input-pick svg { width: 36px; height: 36px; }
 #input-pick button.picked { background: var(--suit); color: #fff; }
 
+#ver { position: absolute; right: 16px; bottom: calc(10px + env(safe-area-inset-bottom)); margin: 0; font-size: 14px; opacity: .45; }
+
 .big {
   font-size: 40px; font-weight: 900; color: #fff;
   background: var(--suit);

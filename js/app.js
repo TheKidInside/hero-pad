@@ -8,6 +8,8 @@ import { Ink } from './ink.js';
 import * as sfx from './audio.js';
 import { load, save } from './storage.js';
 
+const VERSION = 'v3';
+
 const TOL = { wide: 80, medium: 60, tight: 45 };   // corridor half-width, stage units
 const OFF_INK = '#b8bdc9';                          // ink colour while off the road
 const STEP = 4;                                     // pen points are densified to this spacing
@@ -360,5 +362,6 @@ window.__heroPad = {
   maze: () => item?.maze && { cols: item.maze.cols, rows: item.maze.rows, open: [...item.maze.open], start: item.maze.start, goal: item.maze.goal },
 };
 
+$('#ver').textContent = VERSION;
 renderHome();
 show('home');

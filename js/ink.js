@@ -7,7 +7,6 @@
 //   begin() / end() / cancel()                      stroke lifecycle hooks
 
 const PEN_HOLD_MS = 4000;   // after the Pencil was last used, finger touches count as a resting palm
-const PALM_PX = 60;         // touches reported wider than this are palms
 const WIDTH = 16;           // base ink width in stage units
 
 export class Ink {
@@ -38,9 +37,8 @@ export class Ink {
       if (this.active) return;
     } else {
       if (this.active) return;
-      const palmSized = Math.max(e.width || 0, e.height || 0) > PALM_PX;
       const penInHand = !this.fingers && now - this.penAt < PEN_HOLD_MS;
-      if (e.pointerType === 'touch' && (penInHand || palmSized)) return;
+      if (e.pointerType === 'touch' && penInHand) return;
     }
     try { this.c.setPointerCapture(e.pointerId); } catch { /* synthetic or already gone */ }
     this.active = { id: e.pointerId, type: e.pointerType, stroke: { pts: [] } };

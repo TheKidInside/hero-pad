@@ -2,7 +2,7 @@
 import { makeStroke, newTrace, feed, arc } from '../js/trace.js';
 import { makeMaze, reachable, solution, layout, newWalk, walk, cellCenter } from '../js/maze.js';
 import { ITEMS } from '../js/letters.js';
-import { buildMission } from '../js/curriculum.js';
+import { buildMission, MIN_ROUTE } from '../js/curriculum.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log(`${ok ? 'ok' : 'FAIL'} - ${msg}`); if (!ok) fails++; };
@@ -115,6 +115,14 @@ check(!w.done, 'maze: a straight line through the walls does not reach the goal'
 const a = buildMission(42), b = buildMission(42);
 check(JSON.stringify(a) === JSON.stringify(b), 'mission: same seed, same mission');
 check(a[0].kind === 'maze' && a[a.length - 1].kind === 'maze', 'mission: opens and closes with a maze');
+let winding = true;
+for (let s = 1; s <= 60; s++) {
+  for (const it of buildMission(s).filter(x => x.kind === 'maze')) {
+    if (solution(makeMaze(it.cols, it.rows, it.seed)).length < Math.ceil(it.cols * it.rows * MIN_ROUTE)) winding = false;
+  }
+}
+check(winding, 'mission: every maze route winds through at least half the cells');
+check(a[0].cols === 5 && a[a.length - 1].cols === 6, 'mission: mazes are 5x5 then 6x6');
 let repeat = false;
 for (let s = 1; s < 200; s++) { const ms = buildMission(s); if (ms[1].id === ms[3].id) repeat = true; }
 check(!repeat, 'mission: the two stroke drills are never the same');

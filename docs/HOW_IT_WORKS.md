@@ -73,6 +73,8 @@ This gives the behaviour a 3-year-old needs:
 
 ### 2.3 Perfect mazes (maze.js)
 
+Missions use a 5x5 maze, then a 6x6. `curriculum.js` keeps only seeds whose route passes through at least half the cells (`MIN_ROUTE`), so the path winds and the dead ends are real. Raise `MIN_ROUTE` or the grid sizes to make mazes harder.
+
 - **Recursive backtracker:** walk randomly, knock down the wall to each new cell, and back up at dead ends. Every cell is reachable and there's exactly one route between any two cells. Each cell stores its open sides as bits (`N=1, E=2, S=4, W=8`).
 - **Seeded RNG** (mulberry32): the same seed always builds the same maze, so tests are repeatable.
 - **The hero follows the pen one cell at a time and only through openings.** A pen in an adjacent cell behind a wall returns `bonk`, so the hero wobbles. Moving back to the previous cell pops the trail.
@@ -82,8 +84,8 @@ This gives the behaviour a 3-year-old needs:
 - Only one pointer draws at a time.
 - **Pen wins:** if the Pencil touches down while a finger or palm stroke is running, that stroke is erased and the rules are rewound to a snapshot taken when it began (`begin` -> `cancel`).
 - **Pencil mode:** for 4 s after the Pencil was last used (`PEN_HOLD_MS`), finger touches are ignored. A palm resting between strokes doesn't draw.
-- Touches reported wider than 60 px count as a palm.
-- **Finger mode** (the Pencil / Finger switch on the home screen, saved as `data.input`) sets `ink.fingers = true`. That turns off the 4 s Pencil-mode wait, so a finger always draws. The Pencil still works, and the palm-size check stays on.
+- There is **no touch-size palm check**. iPadOS reports an ordinary fingertip as 60+ px wide, so a size cut-off threw away real fingers (bug found on the iPad, fixed in v3). iPadOS cancels true palm touches itself (`pointercancel`), and `cancelled()` takes those strokes back.
+- **Finger mode** (the Pencil / Finger switch on the home screen, saved as `data.input`) sets `ink.fingers = true`. That turns off the 4 s Pencil-mode wait, so a finger always draws. The Pencil still works.
 
 ### 2.5 Locking the iPad page down
 
@@ -123,4 +125,4 @@ This gives the behaviour a 3-year-old needs:
   3. `node tests\unit.mjs` checks automatically that tracing it exactly completes it.
 - **Make tracing stricter:** change `data.tol` (`wide`/`medium`/`tight`). A Parent Corner setting is planned for Phase 3.
 - **A curve that goes clockwise:** use `arc(cx, cy, r, from, to)` with `to < from`.
-- **Palm rejection too strict or too loose:** change `PEN_HOLD_MS` and `PALM_PX` in `ink.js`.
+- **Palm rejection too strict or too loose:** change `PEN_HOLD_MS` in `ink.js`.
