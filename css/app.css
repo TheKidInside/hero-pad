@@ -210,3 +210,62 @@ h1 { font-size: clamp(44px, 8vw, 84px); margin: 0; letter-spacing: 1px; color: v
 #done-stars { display: flex; gap: 10px; }
 #done-stars i { width: 54px; height: 54px; }
 .row { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+
+/* ---------- small screens (iPhone) ---------- */
+
+/* The map list may scroll up and down inside itself; the page stays locked. */
+#worlds { overflow-y: auto; overflow-x: clip; overscroll-behavior: contain; touch-action: pan-y; padding-bottom: 8px; }
+.world { min-height: min-content; }
+
+@media (max-width: 700px) {
+  #home { padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); padding-top: calc(14px + env(safe-area-inset-top)); gap: 14px; }
+  h1 { font-size: 40px; }
+  .sub { font-size: 18px; }
+  #input-pick button { font-size: 18px; padding: 6px 16px 6px 10px; min-height: 44px; }
+  #star-total { font-size: 22px; } #star-total svg { width: 40px; height: 40px; }
+  #worlds { grid-template-columns: 1fr; gap: 18px; }
+  .world .scene { height: 110px; }
+  .levels button, .levels li { max-height: 46px; }
+  .world .play { min-height: 52px; font-size: 22px; }
+  .world .play.locked { font-size: 17px; }
+}
+
+/* Short screens, such as a phone on its side: shrink the pictures and the finish screen. */
+@media (max-height: 520px) {
+  #home { padding-left: calc(20px + env(safe-area-inset-left)); padding-right: calc(20px + env(safe-area-inset-right)); padding-top: calc(8px + env(safe-area-inset-top)); gap: 8px; }
+  h1 { font-size: 34px; }
+  .map-bar .sub { display: none; }
+  #worlds { gap: 12px; }
+  .world .scene { height: 70px; }
+  .world .info { padding: 10px 14px 14px; gap: 8px; }
+  .world h2 { font-size: 22px; }
+  .world p { display: none; }
+  .levels button, .levels li { max-height: 40px; font-size: 16px; }
+  .world .play { min-height: 44px; font-size: 18px; }
+  .world .play.locked { font-size: 14px; }
+  .bar { padding: 6px 10px; gap: 8px; }
+  .round { width: 48px; height: 48px; }
+  #prompt { font-size: 20px; }
+  #stars i { width: 24px; height: 24px; }
+  #done { gap: 6px; }
+  #done h1 { font-size: 30px; }
+  #done .sub { font-size: 15px; }
+  #done-svg { width: 28vh; height: 28vh; }
+  #done-stars i { width: 30px; height: 30px; }
+  .big { font-size: 22px; padding: 8px 28px; }
+  .row { gap: 10px; }
+}
+
+/* Small portrait phones: the finish screen needs to fit in about 650px. */
+@media (max-height: 700px) and (min-height: 521px) {
+  #done { gap: 8px; }
+  #done h1 { font-size: 34px; }
+  #done-svg { width: 30vh; height: 30vh; }
+  #done-stars i { width: 38px; height: 38px; }
+  .big { font-size: 26px; padding: 12px 36px; }
+}
+
+/* Cards keep their natural height and the list scrolls, rather than squeezing each card. */
+@media (max-width: 700px), (max-height: 520px) {
+  #worlds { grid-auto-rows: min-content; align-content: start; }
+}
