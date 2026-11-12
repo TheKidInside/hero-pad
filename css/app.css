@@ -269,3 +269,15 @@ h1 { font-size: clamp(44px, 8vw, 84px); margin: 0; letter-spacing: 1px; color: v
 @media (max-width: 700px), (max-height: 520px) {
   #worlds { grid-auto-rows: min-content; align-content: start; }
 }
+
+/* Narrow phones: buttons and stars on one row, the title on its own row below. */
+@media (max-width: 700px) {
+  .bar { flex-wrap: wrap; row-gap: 4px; padding: 8px 12px; }
+  #exit { order: 1; } #stars { order: 2; flex: 1; justify-content: center; } #speak { order: 3; }
+  #title { order: 4; flex: 0 0 100%; }
+  #stars i { width: 28px; height: 28px; }
+  #where { font-size: 12px; letter-spacing: .08em; text-align: center; }
+  #prompt { font-size: 22px; }
+  .round { width: 52px; height: 52px; }
+  #body { padding: 0 8px 12px; }
+}
