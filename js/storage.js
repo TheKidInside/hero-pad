@@ -3,7 +3,8 @@
 
 const KEY = 'heropad.v1';
 
-const defaults = () => ({ hero: 'zip', input: 'pencil', tol: 'wide', sound: true, items: {}, missions: 0 });
+// `levels` maps "<world>-<n>" to { stars } (the best attempt), see levels.js.
+const defaults = () => ({ hero: 'zip', input: 'pencil', tol: 'wide', sound: true, items: {}, levels: {}, missions: 0 });
 
 export function load() {
   try {
@@ -11,6 +12,7 @@ export function load() {
     if (raw) {
       const d = { ...defaults(), ...JSON.parse(raw) };
       if (!d.items || typeof d.items !== 'object' || Array.isArray(d.items)) d.items = {};
+      if (!d.levels || typeof d.levels !== 'object' || Array.isArray(d.levels)) d.levels = {};
       if (!Number.isFinite(d.missions)) d.missions = 0;
       return d;
     }

@@ -1,14 +1,15 @@
-// Hero Pad: screens and the play loop. Home -> mission (5 items) -> mission complete.
+// Hero Pad: screens and the play loop. Map -> level (one mission of 5+ items) -> level complete.
 
 import { makeStroke, newTrace, copyTrace, feed } from './trace.js';
 import { makeMaze, layout, newWalk, copyWalk, walk, cellCenter, wallPath } from './maze.js';
-import { buildMission } from './curriculum.js';
-import { HEROES, heroSVG, goalStar, backdrop, WORLD_BG } from './art.js';
+import { buildLevel } from './curriculum.js';
+import { WORLDS, WORLD_ORDER, LEVELS_PER_WORLD, STARS_TO_UNLOCK, OPEN_NEXT_WORLD_AT, levelSpec, levelKey, levelOpen, worldOpen, currentLevel, starsOf, totalStars, nextLevel } from './levels.js';
+import { HEROES, heroSVG, goalStar, backdrop, worldScene, WORLD_THEME } from './art.js';
 import { Ink } from './ink.js';
 import * as sfx from './audio.js';
 import { load, save } from './storage.js';
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 
 const TOL = { wide: 80, medium: 60, tight: 45 };   // corridor half-width, stage units
 const OFF_INK = '#b8bdc9';                          // ink colour while off the road
@@ -23,12 +24,21 @@ const data = load();
 sfx.setEnabled(data.sound);
 const params = new URLSearchParams(location.search);
 
-let mission = [], at = 0, item = null, busy = false;
+let lvl = { world: 'web', n: 1 };                   // the level being played
+let mission = [], at = 0, item = null, busy = false, openBefore = new Set();
 let snap = null, lastFed = null, wobbleAt = 0, nextTimer = null;
 let rect = { stage: null, canvas: null };
 
-const hero = () => HEROES[data.hero] || HEROES.zip;
-const tol = () => TOL[data.tol] || TOL.wide;
+const spec = () => levelSpec(lvl.world, lvl.n);
+const hero = () => HEROES[WORLDS[lvl.world].hero] || HEROES.zip;
+const tol = () => TOL[item?.tol] || TOL.wide;
+
+// A world's colours become custom properties on the screen that shows it.
+function applyTheme(el, world) {
+  const t = WORLD_THEME[world], h = HEROES[WORLDS[world].hero];
+  const vars = { page: t.page, tile: t.tile, txt: t.text, sub: t.sub, panel: t.panel, glow: t.glow, edge: t.edge, 'star-off': t.starOff, suit: h.suit };
+  for (const [k, v] of Object.entries(vars)) el.style.setProperty(`--${k}`, v);
+}
 
 // ---------- screens ----------
 
@@ -37,15 +47,36 @@ function show(name) {
   if (name === 'play') fit();
 }
 
+const LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8 11 V8 a4 4 0 0 1 8 0 V11" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
+
+function worldCard(id) {
+  const w = WORLDS[id], t = WORLD_THEME[id], open = worldOpen(data, id), cur = currentLevel(data, id);
+  const cleared = starsOf(data, id, LEVELS_PER_WORLD) >= STARS_TO_UNLOCK;
+  let bubbles = '';
+  for (let n = 1; n <= LEVELS_PER_WORLD; n++) {
+    const name = levelSpec(id, n).name;
+    if (!levelOpen(data, id, n)) { bubbles += `<li aria-label="Level ${n}, locked">${n}</li>`; continue; }
+    const cls = starsOf(data, id, n) >= STARS_TO_UNLOCK ? 'done' : n === cur ? 'now' : 'open';
+    bubbles += `<li><button class="${cls}" data-world="${id}" data-n="${n}" aria-label="Level ${n}: ${name}">${n}</button></li>`;
+  }
+  const prev = WORLDS[WORLD_ORDER[WORLD_ORDER.indexOf(id) - 1]];
+  const action = open
+    ? `<button class="play" data-world="${id}" data-n="${cur}">${cleared ? 'Play the boss again' : `Play level ${cur}`}</button>`
+    : `<button class="play locked" disabled>${LOCK} Reach ${prev.name} level ${OPEN_NEXT_WORLD_AT}</button>`;
+  return `
+    <section class="world" style="--accent:${t.accent};--deep:${t.deep};--pale:${t.pale};--paleText:${t.paleText}">
+      <svg class="scene" viewBox="0 0 340 200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${w.name}">${worldScene(id)}</svg>
+      <div class="info">
+        <div><h2>${w.name}</h2><p>${w.blurb}</p></div>
+        <ol class="levels" aria-label="${w.name} levels">${bubbles}</ol>
+        ${action}
+      </div>
+    </section>`;
+}
+
 function renderHome() {
-  const box = $('#heroes');
-  box.innerHTML = Object.entries(HEROES).map(([id, h]) => `
-    <button class="hero-card${id === data.hero ? ' picked' : ''}" data-hero="${id}" style="--suit:${h.suit}">
-      <svg viewBox="-50 -50 100 100" aria-hidden="true">${heroSVG(id)}</svg>
-      <span>${h.name}</span>
-    </button>`).join('');
-  $('#go').style.setProperty('--suit', hero().suit);
-  $('#input-pick').style.setProperty('--suit', hero().suit);
+  $('#worlds').innerHTML = WORLD_ORDER.map(worldCard).join('');
+  $('#star-count').textContent = totalStars(data);
   for (const b of document.querySelectorAll('[data-input]')) {
     const on = b.dataset.input === data.input;
     b.classList.toggle('picked', on);
@@ -54,14 +85,11 @@ function renderHome() {
   ink.fingers = data.input === 'finger';
 }
 
-$('#heroes').addEventListener('click', e => {
-  const b = e.target.closest('[data-hero]');
-  if (!b) return;
+$('#worlds').addEventListener('click', e => {
+  const b = e.target.closest('[data-world]');
+  if (!b || b.disabled) return;
   sfx.unlock();
-  data.hero = b.dataset.hero;
-  save(data);
-  renderHome();
-  sfx.say(`${hero().name}, the ${hero().power}!`);
+  startLevel(b.dataset.world, Number(b.dataset.n));
 });
 
 $('#input-pick').addEventListener('click', e => {
@@ -74,13 +102,15 @@ $('#input-pick').addEventListener('click', e => {
   sfx.say(data.input === 'finger' ? 'Finger power!' : 'Pencil power!');
 });
 
-$('#go').addEventListener('click', () => {
-  sfx.unlock();
-  startMission();
-});
+function goHome() { leaveMission(); renderHome(); show('home'); }
 
-$('#again').addEventListener('click', () => { sfx.unlock(); startMission(); });
-$('#home-btn').addEventListener('click', () => { renderHome(); show('home'); });
+$('#again').addEventListener('click', () => { sfx.unlock(); startLevel(lvl.world, lvl.n); });
+$('#next').addEventListener('click', () => {
+  sfx.unlock();
+  const nx = nextLevel(data, lvl.world, lvl.n);
+  if (nx) startLevel(nx.world, nx.n); else goHome();
+});
+$('#home-btn').addEventListener('click', goHome);
 $('#speak').addEventListener('click', () => { sfx.unlock(); sfx.say(item?.say); });
 
 // Hold the exit button for a moment so a stray tap doesn't end the mission.
@@ -92,7 +122,7 @@ $('#speak').addEventListener('click', () => { sfx.unlock(); sfx.say(item?.say); 
     e.preventDefault();
     clearTimeout(timer);
     btn.classList.add('holding');
-    timer = setTimeout(() => { stop(); leaveMission(); renderHome(); show('home'); }, 900);
+    timer = setTimeout(() => { stop(); goHome(); }, 900);
   });
   for (const t of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(t, stop);
 })();
@@ -108,41 +138,72 @@ function leaveMission() {
   window.speechSynthesis?.cancel();
 }
 
-function startMission() {
+function startLevel(world, n) {
   leaveMission();
+  lvl = { world, n };
+  openBefore = openLevels();                  // so the finish screen can say what this level opened
   const seed = params.has('seed') ? Number(params.get('seed')) : undefined;
-  mission = buildMission(seed);
+  mission = buildLevel(world, n, seed);
   at = 0;
+  applyTheme(screens.play, world);
   $('#stars').innerHTML = mission.map(() => '<i></i>').join('');
+  $('#puzzle').textContent = spec().puzzle;
+  $('#skill').textContent = `Skill: ${spec().skill}`;
   show('play');
   startItem();
 }
 
 function startItem() {
-  const spec = mission[at];
+  const s = mission[at];
   busy = false;
-  item = { ...spec };
-  if (spec.kind === 'maze') {
-    item.maze = makeMaze(spec.cols, spec.rows, spec.seed);
+  item = { ...s };
+  if (s.kind === 'maze') {
+    item.maze = makeMaze(s.cols, s.rows, s.seed);
     item.L = layout(item.maze);
     item.walk = newWalk(item.maze);
   } else {
-    item.paths = spec.strokes.map(s => makeStroke(s));
+    item.paths = s.strokes.map(x => makeStroke(x));
     item.trace = newTrace();
+    item.total = item.paths.reduce((sum, p) => sum + p.len, 0);
   }
-  $('#prompt').textContent = spec.title;
-  screens.play.style.setProperty('--bg', WORLD_BG[spec.world] || '#eef');
-  screens.play.style.setProperty('--suit', hero().suit);
+  $('#where').textContent = `${WORLDS[lvl.world].name.toUpperCase()} · LEVEL ${lvl.n} · ${at + 1} OF ${mission.length}`;
+  $('#prompt').textContent = s.title;
   ink.clear();
   render();
-  sfx.say(spec.say);
+  updateMeter();
+  sfx.say(s.say);
+}
+
+// Level progress: finished items plus how far along the current one is.
+function updateMeter() {
+  let part = 0;
+  if (busy) part = 1;
+  else if (item?.kind === 'trace') {
+    const t = item.trace;
+    const before = item.paths.slice(0, t.s).reduce((sum, p) => sum + p.len, 0);
+    part = t.done ? 1 : (before + item.paths[t.s].cum[t.idx]) / item.total;
+  }
+  const pct = Math.round(Math.min(1, (at + part) / mission.length) * 100);
+  $('#meter-fill').style.width = `${pct}%`;
+  $('#meter').setAttribute('aria-label', `Level progress ${pct} percent`);
+  $('#meter-text').textContent = pct >= 100 ? 'All done!' : `${pct}% - keep going!`;
+}
+
+function openLevels() {
+  const s = new Set();
+  for (const w of WORLD_ORDER) for (let i = 1; i <= LEVELS_PER_WORLD; i++) if (levelOpen(data, w, i)) s.add(levelKey(w, i));
+  return s;
 }
 
 function itemDone() {
   busy = true;
   const rec = data.items[item.id] || (data.items[item.id] = { stars: 0 });
   rec.stars += 1;
+  // A level remembers its best attempt: how many items were finished.
+  const key = levelKey(lvl.world, lvl.n), lrec = data.levels[key] || (data.levels[key] = { stars: 0 });
+  lrec.stars = Math.max(lrec.stars, at + 1);
   save(data);
+  updateMeter();
   $('#stars').children[at]?.classList.add('on');
   stage.querySelector('#hero .bob')?.classList.add('cheer');
   sfx.fanfare();
@@ -156,12 +217,23 @@ function itemDone() {
 
 function missionDone() {
   data.missions += 1;
+  const before = openBefore;
   save(data);
-  $('#done-hero').innerHTML = heroSVG(data.hero);
+  applyTheme(screens.done, lvl.world);
+  $('#done-hero').innerHTML = heroSVG(WORLDS[lvl.world].hero);
   $('#done-stars').innerHTML = mission.map(() => '<i class="on"></i>').join('');
+  const boss = spec().boss, nx = nextLevel(data, lvl.world, lvl.n);
+  $('#done-title').textContent = boss ? 'Boss beaten!' : 'Level complete!';
+  const fresh = [];
+  for (const w of WORLD_ORDER) for (let i = 1; i <= LEVELS_PER_WORLD; i++) {
+    if (levelOpen(data, w, i) && !before.has(levelKey(w, i))) fresh.push(i === 1 ? `${WORLDS[w].name} is open` : `Level ${i} is open`);
+  }
+  $('#done-sub').textContent = `${WORLDS[lvl.world].name}, level ${lvl.n}: ${spec().name.replace(/^Boss: /, '')}${fresh.length ? '. ' + fresh.join('. ') + '!' : ''}`;
+  $('#next').hidden = !nx;
+  $('#next').textContent = nx && nx.world !== lvl.world ? `Go to ${WORLDS[nx.world].name}` : 'Next level';
   show('done');
   sfx.fanfare();
-  sfx.say(`Mission complete! Great job, ${hero().name}!`);
+  sfx.say(`${boss ? 'Boss beaten' : 'Level complete'}! Great job, ${hero().name}!`);
 }
 
 // ---------- drawing the stage ----------
@@ -185,7 +257,7 @@ function arrows(st) {
 }
 
 function heroAt(x, y, size) {
-  return `<g id="hero" style="transform: translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${(size / 100).toFixed(3)})"><g class="bob">${heroSVG(data.hero)}</g></g>`;
+  return `<g id="hero" style="transform: translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${(size / 100).toFixed(3)})"><g class="bob">${heroSVG(WORLDS[lvl.world].hero)}</g></g>`;
 }
 
 function render() {
@@ -232,6 +304,7 @@ function updateTrace() {
   const fill = stage.querySelector('#fill');
   if (fill && !t.done) fill.setAttribute('d', t.idx > 0 ? pathD(item.paths[t.s].pts.slice(0, t.idx + 1), 2) : '');
   moveHero(...heroSpot(), 130, HERO_LIFT);
+  updateMeter();
 }
 
 function renderMaze() {
@@ -326,6 +399,7 @@ const ink = new Ink(canvas, {
     if (!item || busy || !snap) return;
     if (item.kind === 'maze') item.walk = snap; else item.trace = snap;
     render();
+    updateMeter();
   },
 });
 
@@ -349,7 +423,7 @@ new ResizeObserver(() => { if (!screens.play.hidden) fit(); }).observe(area);
 
 window.__heroPad = {
   state: () => ({
-    screen: Object.keys(screens).find(k => !screens[k].hidden), at, busy,
+    screen: Object.keys(screens).find(k => !screens[k].hidden), at, busy, level: { ...lvl }, missionLength: mission.length,
     kind: item?.kind, id: item?.id, trace: item?.trace && { ...item.trace },
     cell: item?.walk?.cell, inkStrokes: ink.strokes.length, data,
   }),

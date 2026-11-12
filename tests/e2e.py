@@ -51,6 +51,9 @@ DOWN_JS = """
 """
 
 
+PLAY_WEB = ".world .play >> nth=0"
+
+
 def state(page):
     return page.evaluate("window.__heroPad.state()")
 
@@ -96,7 +99,7 @@ with sync_playwright() as p:
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
 
     page.goto(BASE + "?seed=7")
-    page.wait_for_selector(".hero-card")
+    page.wait_for_selector(".world")
 
     vp = page.evaluate("document.querySelector('meta[name=viewport]').content")
     check("user-scalable=no" in vp and "maximum-scale=1" in vp, "viewport meta blocks zoom")
@@ -114,16 +117,20 @@ with sync_playwright() as p:
     else:
         check(pinch == [True, False], "two-finger touchmove is cancelled, one-finger is not")
 
-    page.click('[data-hero="bolt"]')
-    check(state(page)["data"]["hero"] == "bolt", "picking a hero is saved")
+    check(page.locator(".world").count() == 3, "map: three worlds")
+    check(page.locator(".world .levels > li").count() == 18, "map: 18 levels in all")
+    check(page.locator(".world .play.locked").count() == 2, "map: Hero HQ and Jump Land start locked")
+    check(page.locator('.levels button').count() == 1, "map: only level 1 is playable at the start")
     shot(page, "1-home")
-    page.click("#go")
+    page.click(PLAY_WEB)
     page.wait_for_function("window.__heroPad.state().screen === 'play'")
 
     # ---- item 1: maze ----
     s = state(page)
     check(s["kind"] == "maze", "mission opens with a maze")
     shot(page, "2-maze")
+    check(page.locator("#aside").is_visible() and len(page.locator("#puzzle").inner_text()) > 10, "level screen: puzzle panel shows beside the stage")
+    check(page.locator("#where").inner_text().startswith("WEB CITY · LEVEL 1 · 1 OF 5"), "level header: world, level and item count")
     box = page.evaluate("(() => { const r = document.querySelector('#stage').getBoundingClientRect(); return [r.left, r.top, r.width]; })()")
     l, t, w = box
     page.evaluate(STROKE_JS, [[[l + w * 0.2, t + w * 0.2], [l + w * 0.8, t + w * 0.8]], "pen", 11])
@@ -176,20 +183,30 @@ with sync_playwright() as p:
     check(s["cell"] == [0, 0], "pen touching down mid finger-stroke takes the finger stroke back")
     page.evaluate(STROKE_JS, [sol, "pen", 42])
     page.wait_for_function("window.__heroPad.state().screen === 'done'", timeout=5000)
-    check(page.locator("#done-stars i.on").count() == 5, "mission complete screen shows 5 stars")
+    check(page.locator("#done-stars i.on").count() == 5, "level complete screen shows 5 stars")
+    check(page.locator("#next").is_visible(), "level complete: a Next level button appears")
     page.wait_for_timeout(700)
     shot(page, "4-done")
     saved = page.evaluate("JSON.parse(localStorage.getItem('heropad.v1'))")
     check(saved["missions"] == 1 and saved["items"]["letter-L"]["stars"] == 1, "progress saved to this browser")
+    check(saved["levels"]["web-1"]["stars"] == 5, "the level remembers its 5 stars")
 
     # leaving during the pause after an item must not advance the next mission
-    page.click("#again")
+    page.click("#home-btn")
+    page.wait_for_function("window.__heroPad.state().screen === 'home'")
+    check(page.locator(".levels button").count() == 2, "map: finishing level 1 opens level 2")
+    check(page.locator(".levels button.done").count() == 1, "map: level 1 shows as done")
+    check(page.locator("#star-count").inner_text() == "5", "map: the star total counts the 5 stars")
+    shot(page, "1b-map-progress")
+    page.click(PLAY_WEB)
     page.wait_for_function("window.__heroPad.state().screen === 'play'")
+    check(state(page)["level"]["n"] == 2, "Play goes to the current level (2)")
+    check("LEVEL 2 " in page.locator("#where").inner_text(), "level header names the world and level")
     page.evaluate(STROKE_JS, [solve_maze(page), "pen", 50])
     check(state(page)["busy"], "race setup: first maze finished")
     page.evaluate("""() => document.querySelector('#exit').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 60, bubbles: true, cancelable: true }))""")
     page.wait_for_function("window.__heroPad.state().screen === 'home'", timeout=3000)
-    page.click("#go")
+    page.click(PLAY_WEB)
     page.wait_for_timeout(1800)
     s = state(page)
     check(s["screen"] == "play" and s["at"] == 0 and s["kind"] == "maze", "exiting during the pause: the new mission still starts at its maze")
@@ -201,7 +218,7 @@ with sync_playwright() as p:
     check(state(page)["data"]["input"] == "finger", "finger mode is picked and saved")
     check(page.locator('[data-input="finger"]').get_attribute("aria-checked") == "true", "finger button shows as picked")
     shot(page, "6-home-finger")
-    page.click("#go")
+    page.click(PLAY_WEB)
     page.wait_for_function("window.__heroPad.state().screen === 'play'")
     sol = solve_maze(page)
     page.evaluate(STROKE_JS, [[sol[0], sol[0]], "pen", 70])        # Pencil just used
@@ -210,10 +227,10 @@ with sync_playwright() as p:
     page.evaluate("globalThis.__touchSize = 0")
     check(state(page)["busy"], "finger mode: a wide fingertip right after the Pencil still solves the maze")
     page.reload()
-    page.wait_for_selector(".hero-card")
+    page.wait_for_selector(".world")
     check(page.locator('[data-input="finger"]').get_attribute("aria-checked") == "true", "finger mode survives a reload")
     page.click('[data-input="pencil"]')
-    page.click("#go")
+    page.click(PLAY_WEB)
     page.wait_for_function("window.__heroPad.state().screen === 'play'")
 
     # portrait sanity

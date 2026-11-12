@@ -1,8 +1,9 @@
 // Unit checks for the pure modules. Run: node tests/unit.mjs
 import { makeStroke, newTrace, feed, arc } from '../js/trace.js';
 import { makeMaze, reachable, solution, layout, newWalk, walk, cellCenter } from '../js/maze.js';
-import { ITEMS } from '../js/letters.js';
-import { buildMission, MIN_ROUTE } from '../js/curriculum.js';
+import { ITEMS, letterId } from '../js/letters.js';
+import { buildLevel, MIN_ROUTE, BOSS_LETTERS } from '../js/curriculum.js';
+import { WORLDS, WORLD_ORDER, LEVELS_PER_WORLD, levelSpec, levelOpen, worldOpen, currentLevel, totalStars, nextLevel } from '../js/levels.js';
 
 let fails = 0;
 const check = (ok, msg) => { console.log(`${ok ? 'ok' : 'FAIL'} - ${msg}`); if (!ok) fails++; };
@@ -111,21 +112,73 @@ check(!w.done, 'maze: a straight line through the walls does not reach the goal'
   check(tested, 'maze: found a corner to test');
 }
 
-// --- mission ---
-const a = buildMission(42), b = buildMission(42);
-check(JSON.stringify(a) === JSON.stringify(b), 'mission: same seed, same mission');
-check(a[0].kind === 'maze' && a[a.length - 1].kind === 'maze', 'mission: opens and closes with a maze');
-let winding = true;
-for (let s = 1; s <= 60; s++) {
-  for (const it of buildMission(s).filter(x => x.kind === 'maze')) {
-    if (solution(makeMaze(it.cols, it.rows, it.seed)).length < Math.ceil(it.cols * it.rows * MIN_ROUTE)) winding = false;
-  }
+// --- letters and drills ---
+for (const [id, it] of Object.entries(ITEMS)) {
+  const pts = it.strokes.flat(), inBox = pts.every(([x, y]) => x >= 80 && x <= 920 && y >= 80 && y <= 920);
+  if (!inBox) check(false, `${id}: every point sits inside the stage with a margin`);
 }
-check(winding, 'mission: every maze route winds through at least half the cells');
-check(a[0].cols === 5 && a[a.length - 1].cols === 6, 'mission: mazes are 5x5 then 6x6');
-let repeat = false;
-for (let s = 1; s < 200; s++) { const ms = buildMission(s); if (ms[1].id === ms[3].id) repeat = true; }
-check(!repeat, 'mission: the two stroke drills are never the same');
+check(true, 'items: every stroke point sits inside the stage with a margin');
+for (const ch of 'LTIHEFOCUJDPBRSGVWMNAKXYZ') check(!!ITEMS[letterId(ch)], `letters: ${ch} exists`);
+
+// A pen that cuts the corner of a one-stroke zigzag must not finish it.
+{
+  const z = ITEMS.zigzag.strokes.map(s => makeStroke(s));
+  const tt = newTrace();
+  run(tt, z, [[200, 200], [200, 800]]);
+  check(!tt.done, 'zigzag: a straight line down the left edge does not finish it');
+}
+
+// --- levels ---
+let allWinding = true;
+for (const world of WORLD_ORDER) {
+  check(WORLDS[world].levels.length === LEVELS_PER_WORLD, `${world}: has ${LEVELS_PER_WORLD} levels`);
+  check(WORLDS[world].levels[LEVELS_PER_WORLD - 1].boss === true, `${world}: level ${LEVELS_PER_WORLD} is the boss`);
+  for (let n = 1; n <= LEVELS_PER_WORLD; n++) {
+    const sp = levelSpec(world, n), ms = buildLevel(world, n, 42 + n);
+    check(JSON.stringify(ms) === JSON.stringify(buildLevel(world, n, 42 + n)), `${world} ${n}: same seed, same mission`);
+    check(ms[0].kind === 'maze' && ms.at(-1).kind === 'maze', `${world} ${n}: opens and closes with a maze`);
+    check(ms.every(i => i.world === world), `${world} ${n}: every item uses the world's backdrop`);
+    check(ms.slice(1, -1).every(i => i.kind === 'trace' && it_ok(i)), `${world} ${n}: middle items are real trace items`);
+    check(sp.boss ? ms.length === BOSS_LETTERS + 2 : ms.length >= 5 && ms.length <= 6, `${world} ${n}: mission length ${ms.length} is sensible`);
+    if (!sp.boss) for (const ch of sp.letters) check(ms.some(i => i.letter === ch), `${world} ${n}: teaches ${ch}`);
+    for (const i of ms.filter(x => x.kind === 'maze')) {
+      if (solution(makeMaze(i.cols, i.rows, i.seed)).length < Math.ceil(i.cols * i.rows * MIN_ROUTE)) allWinding = false;
+    }
+  }
+  const taught = new Set(WORLDS[world].levels.flatMap(l => l.letters || []));
+  check(WORLDS[world].letters.every(c => taught.has(c)), `${world}: every letter on its list is taught by a level`);
+}
+check(allWinding, 'levels: every maze route winds through at least half the cells');
+function it_ok(i) { return makeStroke(i.strokes[0]).len > 0; }
+
+const boss = [buildLevel('web', 6, 1), buildLevel('web', 6, 2)].map(ms => ms.slice(1, -1).map(i => i.letter).join(''));
+check(boss[0].length === BOSS_LETTERS, "boss: reviews five letters");
+check(buildLevel('jump', 6, 5).slice(1, -1).every(i => WORLDS.jump.letters.includes(i.letter)), 'boss: only reviews its own world\'s letters');
+check(new Set(buildLevel('hq', 6, 9).slice(1, -1).map(i => i.letter)).size === BOSS_LETTERS, 'boss: no letter twice');
+check(buildLevel('jump', 6, 3)[0].cols === 7, 'jump boss: 7x7 maze');
+
+// --- progress and unlocking ---
+{
+  const d = { levels: {} };
+  check(worldOpen(d, 'web') && !worldOpen(d, 'hq') && !worldOpen(d, 'jump'), 'unlock: a fresh game opens only Web City');
+  check(levelOpen(d, 'web', 1) && !levelOpen(d, 'web', 2), 'unlock: only level 1 is playable at the start');
+  check(currentLevel(d, 'web') === 1, 'unlock: current level starts at 1');
+  d.levels['web-1'] = { stars: 2 };
+  check(!levelOpen(d, 'web', 2), 'unlock: 2 stars does not open the next level');
+  d.levels['web-1'] = { stars: 3 };
+  check(levelOpen(d, 'web', 2) && currentLevel(d, 'web') === 2, 'unlock: 3 stars opens the next level');
+  d.levels['web-2'] = { stars: 5 };
+  check(!worldOpen(d, 'hq'), 'unlock: Hero HQ stays shut until Web City level 4 is open');
+  d.levels['web-3'] = { stars: 3 };
+  check(worldOpen(d, 'hq') && !worldOpen(d, 'jump'), 'unlock: reaching Web City level 4 opens Hero HQ');
+  check(totalStars(d) === 11, 'stars: total adds every level');
+  check(nextLevel(d, 'web', 3).n === 4 && nextLevel(d, 'web', 4) === null, 'next: points at the next open level, or nothing');
+  for (let n = 1; n <= 3; n++) d.levels[`hq-${n}`] = { stars: 3 };
+  check(worldOpen(d, 'jump'), 'unlock: reaching Hero HQ level 4 opens Jump Land');
+  d.levels['web-4'] = { stars: 5 }; d.levels['web-5'] = { stars: 5 }; d.levels['web-6'] = { stars: 4 };
+  const nx = nextLevel(d, 'web', 6);
+  check(nx && nx.world === 'hq' && nx.n === 1, 'next: after the boss, go on to the next world');
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

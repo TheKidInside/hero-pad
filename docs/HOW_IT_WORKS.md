@@ -2,7 +2,15 @@
 
 Hero Pad is a handwriting practice app for Judah's iPad. It is a plain website (HTML, CSS and JavaScript, with no build step) hosted on GitHub Pages. When it's added to the home screen it runs full screen like an app. He traces roads with the Apple Pencil or a finger, and a hero rides along the line. Mazes, strokes and letters are mixed into short missions.
 
-This document covers **Phase 1, the feel test**: mazes, three stroke drills (down lines, across lines, a circle) and the letter L. Phases 2 and 3 are in `C:\Artificial\plans\hero-pad-handwriting-app.md`.
+This document covers **Phase 1, the feel test**, plus the **v4 level system**: a world map, three worlds of six levels each (18 levels), 25 capital letters and 13 stroke drills. Phases 2 and 3 are in `C:\Artificial\plans\hero-pad-handwriting-app.md`.
+
+### Levels (v4)
+
+- `js/levels.js` is the whole plan as data: `WORLDS.<web|hq|jump>.levels[]` (maze size, drills, letters, corridor `tol`, puzzle text, skill text). Level 6 of each world is a boss that reviews 5 random letters from the world.
+- `js/curriculum.js` `buildLevel(world, n, seed)` turns one level into a mission: maze, drill(s), letter(s), maze.
+- Progress is `data.levels["web-1"] = { stars }`, the best attempt (items finished). **3 stars opens the next level.** Reaching level 4 of a world opens the next world. The rules are `levelOpen` and `worldOpen`.
+- The hero is the world's hero (Zip, Bolt, Hop). The corridor narrows by world and level (`wide` 80, `medium` 60, `tight` 45), set per level.
+- The side panel (puzzle, level progress bar, skill) is hidden in portrait. Puzzle text is plain for now: the special puzzle visuals in the design plan (rescue, light-ups, coin pickups, dot-to-dot, boss scenes) are **not built yet**.
 
 ---
 
@@ -121,8 +129,9 @@ Missions use a 5x5 maze, then a 6x6. `curriculum.js` keeps only seeds whose rout
 
 - **Add a letter:**
   1. Add an entry to `ITEMS` in `letters.js`, with strokes in stroke order, each drawn in the pen's direction, inside 150-850 tall.
-  2. Add its id to `LETTERS` in `curriculum.js`.
+  2. Add the character to a world's `letters` list and to a level's `letters` in `levels.js`.
   3. `node tests\unit.mjs` checks automatically that tracing it exactly completes it.
-- **Make tracing stricter:** change `data.tol` (`wide`/`medium`/`tight`). A Parent Corner setting is planned for Phase 3.
+- **Add or change a level:** edit its entry in `levels.js`. The unit tests check every level builds, every world letter is taught, and unlocking works.
+- **Make tracing stricter:** change a level's `tol` (`wide`/`medium`/`tight`) in `levels.js`. A Parent Corner setting is planned for Phase 3.
 - **A curve that goes clockwise:** use `arc(cx, cy, r, from, to)` with `to < from`.
 - **Palm rejection too strict or too loose:** change `PEN_HOLD_MS` in `ink.js`.

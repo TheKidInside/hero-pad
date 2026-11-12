@@ -17,26 +17,35 @@
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 </script>
-<link rel="stylesheet" href="css/app.css?v=3">
-<script type="module" src="js/app.js?v=3"></script>
+<link rel="stylesheet" href="css/app.css?v=4">
+<script type="module" src="js/app.js?v=4"></script>
 </head>
 <body>
 
 <main id="home" class="screen">
-  <h1>Hero Pad</h1>
-  <p class="sub">Pick your hero</p>
-  <div id="heroes"></div>
-  <div id="input-pick" role="radiogroup" aria-label="Draw with">
-    <button data-input="pencil" role="radio">
-      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 31 L11 24 L26 9 L31 14 L16 29 Z M23 12 L28 17" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9 31 L11 24 L16 29 Z" fill="currentColor"/></svg>
-      Pencil
-    </button>
-    <button data-input="finger" role="radio">
-      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M17 21 V8 a3 3 0 0 1 6 0 V19 M23 18 a3 3 0 0 1 6 0 V24 M17 21 L13.5 17.5 a2.8 2.8 0 0 0 -4 4 L16 30 Q19 34 24 34 Q31 34 31 26 V22 a2.5 2.5 0 0 0 -5 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>
-      Finger
-    </button>
-  </div>
-  <button id="go" class="big">GO!</button>
+  <header class="map-bar">
+    <div>
+      <h1>Hero Pad</h1>
+      <p class="sub">Pick a world, hero!</p>
+    </div>
+    <div class="map-tools">
+      <div id="input-pick" role="radiogroup" aria-label="Draw with">
+        <button data-input="pencil" role="radio">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 31 L11 24 L26 9 L31 14 L16 29 Z M23 12 L28 17" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9 31 L11 24 L16 29 Z" fill="currentColor"/></svg>
+          Pencil
+        </button>
+        <button data-input="finger" role="radio">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M17 21 V8 a3 3 0 0 1 6 0 V19 M23 18 a3 3 0 0 1 6 0 V24 M17 21 L13.5 17.5 a2.8 2.8 0 0 0 -4 4 L16 30 Q19 34 24 34 Q31 34 31 26 V22 a2.5 2.5 0 0 0 -5 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          Finger
+        </button>
+      </div>
+      <div id="star-total" aria-label="Stars collected">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#ffd84a"/><polygon points="20,7 23.5,15.5 32.5,16 25.5,22 27.8,31 20,26 12.2,31 14.5,22 7.5,16 16.5,15.5" fill="#fff"/></svg>
+        <span id="star-count">0</span>
+      </div>
+    </div>
+  </header>
+  <div id="worlds"></div>
   <p id="ver"></p>
 </main>
 
@@ -45,25 +54,37 @@
     <button id="exit" class="round" aria-label="Hold to go home">
       <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 20 L20 9 L32 20 M12 17 V31 H28 V17" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><circle class="ring" cx="20" cy="20" r="18"/></svg>
     </button>
-    <div id="prompt"></div>
+    <div id="title">
+      <span id="where"></span>
+      <span id="prompt"></span>
+    </div>
     <button id="speak" class="round" aria-label="Say it again">
       <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 16 H13 L21 9 V31 L13 24 H7 Z" fill="currentColor"/><path d="M26 14 Q30 20 26 26 M30 10 Q37 20 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
     </button>
     <div id="stars"></div>
   </header>
-  <div id="area">
-    <svg id="stage" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
-    <canvas id="ink"></canvas>
+  <div id="body">
+    <div id="area">
+      <svg id="stage" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
+      <canvas id="ink"></canvas>
+    </div>
+    <aside id="aside">
+      <div class="card"><p class="label">THE PUZZLE</p><p id="puzzle"></p></div>
+      <div class="card"><p class="label">LEVEL PROGRESS</p><div id="meter" role="img"><div id="meter-fill"></div></div><p id="meter-text"></p></div>
+      <div class="card skill"><p id="skill"></p></div>
+    </aside>
   </div>
 </main>
 
 <main id="done" class="screen" hidden>
-  <h1>Mission complete!</h1>
+  <h1 id="done-title">Level complete!</h1>
+  <p id="done-sub" class="sub"></p>
   <svg id="done-svg" viewBox="-60 -60 120 120" aria-hidden="true"><g id="done-hero"></g></svg>
   <div id="done-stars"></div>
   <div class="row">
-    <button id="again" class="big">Again!</button>
-    <button id="home-btn" class="big quiet">Home</button>
+    <button id="next" class="big" hidden>Next level</button>
+    <button id="again" class="big quiet">Again!</button>
+    <button id="home-btn" class="big quiet">Map</button>
   </div>
 </main>
 
